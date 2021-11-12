@@ -1,4 +1,9 @@
-﻿using System.Web.Mvc;
+﻿using PersonalSiteMVC.UI.MVC.Models;
+using System;
+using System.Configuration;
+using System.Net;
+using System.Net.Mail;
+using System.Web.Mvc;
 
 namespace PersonalSiteMVC.UI.MVC.Controllers
 {
@@ -11,7 +16,7 @@ namespace PersonalSiteMVC.UI.MVC.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        //[Authorize]
         public ActionResult About()
         {
             ViewBag.Message = "Your app description page.";
@@ -19,12 +24,37 @@ namespace PersonalSiteMVC.UI.MVC.Controllers
             return View();
         }
 
-        [HttpGet]
-        public ActionResult Contact()
+        [HttpPost]
+        public JsonResult ContactAjax(ContactViewModel cvm)
         {
-            ViewBag.Message = "Your contact page.";
+            string body = $"{cvm.Name} has sent you the following message:<br />" +
+                $"{cvm.Message} <strong>from the email address:</strong> {cvm.Email}.";
 
-            return View();
+            MailMessage mm = new MailMessage(
+                ConfigurationManager.AppSettings["EmailUser"].ToString(),
+                ConfigurationManager.AppSettings["EmailTo"].ToString(),
+                cvm.Subject,
+                body);
+
+            mm.IsBodyHtml = true;
+            mm.Priority = MailPriority.High;
+            mm.ReplyToList.Add(cvm.Email);
+
+            SmtpClient client = new SmtpClient(ConfigurationManager.AppSettings["EmailClient"].ToString());
+            client.Credentials = new NetworkCredential(ConfigurationManager.AppSettings["EmailUser"].ToString(), ConfigurationManager.AppSettings["EmailPass"].ToString());
+
+            try
+            {
+                client.Send(mm);
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Message = ex.StackTrace;
+            }
+
+            return Json(cvm);
+
         }
+
     }
 }
